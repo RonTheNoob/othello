@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +62,7 @@ fun OthelloGame(navController: NavController, viewModel: OthelloViewModel = view
         )
 
         GameEnd(
+            navController = navController,
             gameOver = gameState.gameOver,
             onRestart = { viewModel.resetGame() }
         )
@@ -173,22 +176,24 @@ fun GameInfo(gameState: GameState) {
 }
 
 @Composable
-fun GameEnd(gameOver: Boolean, onRestart: () -> Unit) {
-    var text = "Quit the Game"
-    if(gameOver) {
-        text = "Play Again?"
-    }
-
-    Button(
-        onClick = {
-            if(text == "Play Again?") {
-                onRestart()
-            } else {
-                // should go back to home screen
+fun GameEnd(navController: NavController, gameOver: Boolean, onRestart: () -> Unit) {
+    Row {
+        if (gameOver) {
+            Button(
+                onClick = onRestart,
+                modifier = Modifier.padding(top = 16.dp)
+            ) {
+                Text("Play Again?")
             }
-                  },
-        modifier = Modifier.padding(top = 16.dp)
-    ) {
-        Text(text)
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Button(
+            onClick = { navController.popBackStack()},
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
+            Text("Quit the Game")
+        }
     }
 }
