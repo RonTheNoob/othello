@@ -60,6 +60,15 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
 
         Button(
             modifier = Modifier.fillMaxWidth(),
+            onClick = { navController.navigate("leaderboard") }
+        ) {
+            Text(text = "Leaderboard")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
             onClick = {
                 // add tutorial navigation
             }

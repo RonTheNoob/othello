@@ -19,16 +19,15 @@ import com.example.othello.modules.game.multiplayer.ui.MultiplayerViewModel
 import com.example.othello.modules.game.multiplayer.ui.SessionsScreen
 import com.example.othello.modules.game.multiplayer.ui.MultiplayerScreen
 import com.example.othello.modules.game.ui.OthelloGame
+import com.example.othello.modules.home.data.LeaderboardViewModel
 import com.example.othello.modules.home.ui.HomeScreen
+import com.example.othello.modules.home.ui.LeaderboardScreen
 import com.example.othello.ui.theme.OthelloTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // enableEdgeToEdge()
         setContent {
-            // val authViewModel: AuthViewModel by viewModels()
-
             OthelloTheme{
                 val authViewModel = AuthViewModel(authRepository = AuthRepository())
                 val multiplayerViewModel: MultiplayerViewModel by viewModels()
@@ -37,7 +36,7 @@ class MainActivity : ComponentActivity() {
 
                 val authState by authViewModel.uiState.collectAsState()
 //                val gameState by multiplayerViewModel.gameState.collectAsState()
-                val authEmail = authState.email
+//                val authEmail = authState.email
 
 //                var startDestination = "sessions"
 //                if (authState.currentUser == null) {
@@ -78,6 +77,14 @@ class MainActivity : ComponentActivity() {
                         RegistrationScreen(
                             navController = navController,
                             authViewModel = authViewModel
+                        )
+                    }
+
+                    composable("leaderboard") {
+                        val leaderboardViewModel: LeaderboardViewModel by viewModels()
+                        LeaderboardScreen(
+                            navController = navController,
+                            viewModel = leaderboardViewModel
                         )
                     }
 
