@@ -1,8 +1,5 @@
-package com.example.othello.modules.game.ui
+package com.example.othello.modules.game.multiplayer.ui
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,13 +8,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -26,25 +21,29 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.othello.R
 import com.example.othello.modules.game.data.OthelloGameLogic
+import com.example.othello.modules.game.ui.GameState
 
 @Composable
-fun OthelloGame(navController: NavController, viewModel: OthelloViewModel = viewModel()) {
-    val gameState by viewModel.gameState
-//        val board = remember { Array(8) { Array(8) { ' ' } } }
+fun MultiplayerScreen(
+    navController: NavController,
+    multiplayerViewModel: MultiplayerViewModel,
+    sessionId: String
+) {
+
+    LaunchedEffect(sessionId) {
+        multiplayerViewModel.updateGameSession(sessionId)
+    }
+
+    val gameState by multiplayerViewModel.gameState
 
     Column(
         modifier = Modifier
@@ -63,8 +62,8 @@ fun OthelloGame(navController: NavController, viewModel: OthelloViewModel = view
             board = gameState.board,
             validMoves = if (gameState.currentTurn == "player") gameState.validMoves else emptyList(),
             onCellClick = { x, y ->
-                if (gameState.currentTurn == "player" && gameState.validMoves.contains(Pair(x, y))) {
-                    viewModel.makePlayerMove(x, y)
+                if (gameState.currentTurn == "player") {
+                    multiplayerViewModel.makeMove(x, y)
                 }
             }
         )
@@ -72,7 +71,6 @@ fun OthelloGame(navController: NavController, viewModel: OthelloViewModel = view
         GameEnd(
             navController = navController,
             gameOver = gameState.gameOver,
-            onRestart = { viewModel.resetGame() }
         )
     }
 }
@@ -185,21 +183,10 @@ fun GameInfo(gameState: GameState) {
 }
 
 @Composable
-fun GameEnd(navController: NavController, gameOver: Boolean, onRestart: () -> Unit) {
+fun GameEnd(navController: NavController, gameOver: Boolean) {
     Row {
-        if (gameOver) {
-            Button(
-                onClick = onRestart,
-                modifier = Modifier.padding(top = 16.dp)
-            ) {
-                Text("Play Again?")
-            }
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
         Button(
-            onClick = { navController.popBackStack()},
+            onClick = { navController.popBackStack() },
             modifier = Modifier.padding(top = 16.dp)
         ) {
             Text("Quit the Game")

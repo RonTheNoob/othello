@@ -11,15 +11,21 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.othello.modules.auth.ui.AuthViewModel
 
 @Composable
-fun HomeScreen(navController: NavController) {
+fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
+    val authState by authViewModel.uiState.collectAsState()
+    var authEmail = authState.email
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -36,7 +42,7 @@ fun HomeScreen(navController: NavController) {
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate("game") }
+            onClick = { navController.navigate("singleplayer") }
         ) {
             Text(text = "Singleplayer")
         }
@@ -45,9 +51,7 @@ fun HomeScreen(navController: NavController) {
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = {
-            // add multiplayer navigation
-            }
+            onClick = { navController.navigate("sessions") }
         ) {
             Text(text = "Multiplayer")
         }
@@ -79,10 +83,13 @@ fun HomeScreen(navController: NavController) {
         OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
-                // add auth navigation
+                authViewModel.logout()
+                navController.navigate("login")
             }
         ) {
-            Text(text = "Register/Login")
+            Text(text = "Logout")
         }
+
+
     }
 }

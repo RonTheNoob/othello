@@ -4,6 +4,15 @@ import kotlin.random.Random
 
 class OthelloGameLogic {
 
+    fun getInitialBoard(): Array<MutableList<Char>> {
+        val board = Array(8) { MutableList(8) { ' ' } }
+        board[3][3] = 'X'
+        board[3][4] = 'O'
+        board[4][3] = 'O'
+        board[4][4] = 'X'
+        return board
+    }
+
     fun resetBoard(board: Array<MutableList<Char>>) {
         // Blanks out/resets the board it is passed, except for the original starting position/starting pieces.
         for (x in 0..7) {

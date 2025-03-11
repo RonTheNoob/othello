@@ -19,7 +19,7 @@ class OthelloViewModel : ViewModel() {
     }
 
     fun resetGame() {
-        val newBoard = Array(8) {MutableList(8) {' '}}
+        val newBoard = Array(8) { MutableList(8) { ' ' } }
         gameLogic.resetBoard(newBoard)
 
         val playerTile = 'X' // default but can be changed if you want
