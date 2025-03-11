@@ -22,6 +22,7 @@ import com.example.othello.modules.game.ui.OthelloGame
 import com.example.othello.modules.home.data.LeaderboardViewModel
 import com.example.othello.modules.home.ui.HomeScreen
 import com.example.othello.modules.home.ui.LeaderboardScreen
+import com.example.othello.modules.home.ui.TutorialScreen
 import com.example.othello.ui.theme.OthelloTheme
 
 class MainActivity : ComponentActivity() {
@@ -86,6 +87,10 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             viewModel = leaderboardViewModel
                         )
+                    }
+
+                    composable("tutorial") {
+                        TutorialScreen(navController = navController)
                     }
 
                     // MULTIPLAYER (FOR TESTING)

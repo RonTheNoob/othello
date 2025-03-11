@@ -69,9 +69,7 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                // add tutorial navigation
-            }
+            onClick = { navController.navigate("tutorial") }
         ) {
             Text(text = "Tutorial")
         }
