@@ -4,15 +4,6 @@ import kotlin.random.Random
 
 class OthelloGameLogic {
 
-    fun getInitialBoard(): Array<MutableList<Char>> {
-        val board = Array(8) { MutableList(8) { ' ' } }
-        board[3][3] = 'X'
-        board[3][4] = 'O'
-        board[4][3] = 'O'
-        board[4][4] = 'X'
-        return board
-    }
-
     fun resetBoard(board: Array<MutableList<Char>>) {
         // Blanks out/resets the board it is passed, except for the original starting position/starting pieces.
         for (x in 0..7) {
@@ -180,5 +171,100 @@ class OthelloGameLogic {
             }
         }
         return mapOf('X' to xScore, 'O' to oScore)
+    }
+
+    // FOR MULTIPLAYER
+
+    fun getInitialBoard(): Array<MutableList<Char>> {
+        val board = Array(8) { MutableList(8) { ' ' } }
+        board[3][3] = 'X'
+        board[3][4] = 'O'
+        board[4][3] = 'O'
+        board[4][4] = 'X'
+        return board
+    }
+
+    fun isValidMoveMulti(board: Array<MutableList<Char>>, tile: Char, xStart: Int, yStart: Int): Pair<Boolean, List<Pair<Int, Int>>?> {
+        // Returns false and null if the move is invalid.
+        // If the move is valid, returns true and the list of tiles to flip.
+        if (board[xStart][yStart] != ' ' || !isOnBoard(xStart, yStart)) {
+            return Pair(false, null)
+        }
+
+        board[xStart][yStart] = tile // temporarily set the tile on the board.
+
+        val otherTile = if (tile == 'X') 'O' else 'X'
+
+        val tilesToFlip = mutableListOf<Pair<Int, Int>>()
+        val directions = listOf(
+            Pair(0, 1), Pair(1, 1), Pair(1, 0), Pair(1, -1),
+            Pair(0, -1), Pair(-1, -1), Pair(-1, 0), Pair(-1, 1)
+        )
+        for ((xDirection, yDirection) in directions) {
+            var x = xStart
+            var y = yStart
+            x += xDirection // first step in the direction
+            y += yDirection // first step in the direction
+            if (isOnBoard(x, y) && board[x][y] == otherTile) {
+                x += xDirection
+                y += yDirection
+                if (!isOnBoard(x, y)) {
+                    // continue in for loop
+                    continue
+                }
+                while (board[x][y] == otherTile) {
+                    x += xDirection
+                    y += yDirection
+                    if (!isOnBoard(x, y)) { // break out of while loop, then continue in for loop
+                        break
+                    }
+                }
+                if (!isOnBoard(x, y)) {
+                    continue
+                }
+                if (board[x][y] == tile) {
+                    // There are pieces to flip over. Go in the reverse direction until we reach the original space, noting all the tiles along the way.
+                    while (true) {
+                        x -= xDirection
+                        y -= yDirection
+                        if (x == xStart && y == yStart) {
+                            break
+                        }
+                        tilesToFlip.add(Pair(x, y))
+                    }
+                }
+            }
+        }
+
+        board[xStart][yStart] = ' ' //restore the empty space
+        if (tilesToFlip.isEmpty()) { // If no tiles were flipped, this is not a valid move.
+            return Pair(false, null)
+        }
+        return Pair(true, tilesToFlip)
+    }
+
+     fun hasValidMovesMulti(board: Array<MutableList<Char>>, tile: Char): Boolean {
+        for (x in 0 until 8) {
+            for (y in 0 until 8) {
+                val (isValid, _) = isValidMoveMulti(board, tile, x, y)
+                if (isValid) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    fun makeMoveMulti(board: Array<MutableList<Char>>, tile: Char, xStart: Int, yStart: Int): Boolean {
+        val (isValid, tilesToFlip) = isValidMoveMulti(board, tile, xStart, yStart)
+
+        if (isValid && tilesToFlip != null) {
+            board[xStart][yStart] = tile
+            for ((x, y) in tilesToFlip) {
+                board[x][y] = tile
+            }
+            return true
+        }
+        return false
     }
 }

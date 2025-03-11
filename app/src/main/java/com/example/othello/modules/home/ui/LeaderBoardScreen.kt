@@ -26,9 +26,10 @@ fun LeaderboardScreen(
 
     Column(
         modifier = Modifier
+            .statusBarsPadding()
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = "Leaderboard",
