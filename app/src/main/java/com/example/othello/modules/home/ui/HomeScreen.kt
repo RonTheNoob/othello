@@ -1,26 +1,35 @@
 package com.example.othello.modules.home.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.othello.R
 import com.example.othello.modules.auth.ui.AuthViewModel
 
 @Composable
 fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
-    val authState by authViewModel.uiState.collectAsState()
-    val authEmail = authState.email
 
     Column(
         modifier = Modifier
@@ -30,6 +39,12 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.othello_logo),
+            contentDescription = "Othello Logo",
+            modifier = Modifier.size(100.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Othello",
             fontSize = 36.sp,
@@ -40,10 +55,10 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
 
         val buttonModifier = Modifier
             .fillMaxWidth()
-            .height(50.dp) // Rectangle buttons
+            .height(50.dp)
             .padding(vertical = 4.dp)
 
-        val buttonShape = RoundedCornerShape(8.dp) // Slightly rounded for a sleek look
+        val buttonShape = RoundedCornerShape(8.dp)
 
         Button(
             modifier = buttonModifier,

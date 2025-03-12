@@ -1,5 +1,6 @@
 package com.example.othello.modules.game.multiplayer.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -58,25 +59,25 @@ fun MultiplayerScreen(
     val gameState by multiplayerViewModel.gameState
     val gameSession by multiplayerViewModel.gameSession.collectAsState()
 
-    // State to control the visibility of the dialog
+    // states to control the visibility of the dialog
     var showOpponentQuitDialog by remember { mutableStateOf(false) }
     var showGameOverDialog by remember { mutableStateOf(false) }
 
-    // Show the dialog if the opponent quits
+    // shows the dialog if the opponent quits
     LaunchedEffect(gameState.opponentQuitMessage) {
         if (gameState.opponentQuitMessage.isNotEmpty()) {
             showOpponentQuitDialog = true
         }
     }
 
-    // Show game over dialog when the game is finished
+    // shows game over dialog when the game is finished
     LaunchedEffect(gameState.gameOver, gameState.gameOverMessage) {
         if (gameState.gameOver && gameState.gameOverMessage.isNotEmpty() && !showOpponentQuitDialog) {
             showGameOverDialog = true
         }
     }
 
-    // Dialog to show when the opponent quits
+    // shows dialog when the opponent quits
     if (showOpponentQuitDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -106,7 +107,7 @@ fun MultiplayerScreen(
         )
     }
 
-    // Dialog to show when the game is over
+    // shows dialog when the game is over
     if (showGameOverDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -134,6 +135,11 @@ fun MultiplayerScreen(
                 }
             }
         )
+    }
+
+    BackHandler {
+        multiplayerViewModel.handlePlayerQuit(sessionId)
+        navController.popBackStack()
     }
 
     Column(
@@ -256,28 +262,28 @@ fun CellView(
     y: Int
 ) {
     val isFlipped = flippedTiles.contains(Pair(x, y))
-    val index = flippedTiles.indexOf(Pair(x, y)) // Get the index of the tile in the flippedTiles list
-    val delay = index * 100L // Add a delay based on the tile's position (100ms per tile)
+    val index = flippedTiles.indexOf(Pair(x, y)) // gets the index of the tile in the flippedTiles list
+    val delay = index * 100L // adds a delay based on the tile's position (100ms per tile)
 
     // Animate the rotation
     val rotation by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
         animationSpec = tween(
-            durationMillis = 1000, // Duration of the flip animation
-            delayMillis = delay.toInt(), // Staggered delay for the wavy effect
+            durationMillis = 1000,
+            delayMillis = delay.toInt(), // delay for the wavy effect
             easing = FastOutSlowInEasing
         )
     )
 
-    // Determine the target color based on the cell value
+    // determines the target color based on the cell value
     val targetColor = if (cell == 'X') Color.Black else Color.White
     val oppositeColor = if (cell == 'X') Color.White else Color.Black
 
-    // Animate the color change only for flipped tiles
+    // animate the color change for flipped tiles
     val animatedColor by animateColorAsState(
-        targetValue = if (isFlipped && rotation > 90f) oppositeColor else targetColor, // Change color at midpoint for flipped tiles
+        targetValue = if (isFlipped && rotation > 90f) oppositeColor else targetColor, // changes color at the midpoint for flipped tiles
         animationSpec = tween(
-            durationMillis = 500, // Half the flip duration
+            durationMillis = 500,
             delayMillis = if (isFlipped) delay.toInt() + 500 else 0, // Start color change at midpoint for flipped tiles
             easing = FastOutSlowInEasing
         )
@@ -288,7 +294,7 @@ fun CellView(
             .size(40.dp)
             .border(BorderStroke(1.dp, gridColor))
             .background(if (isValidMove) validMoveColor else Color.Transparent)
-            .clickable(onClick = onClick) // Make the cell clickable
+            .clickable(onClick = onClick) // Makes the cell clickable
             .graphicsLayer {
             rotationY = rotation
             cameraDistance = 8 * density
@@ -319,17 +325,12 @@ fun MultiplayerGameInfo(gameState: GameState, gameSession: GameSession, isHost: 
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(bottom = 16.dp)
     ) {
-        Text(
-            text = "Othello",
-            style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
 
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Your Score
+            // Host Score
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 val playerName = if (isHost) {
                     "${gameSession.hostName} (${if (gameState.playerTile == 'X') "Black" else "White"})"
@@ -416,7 +417,7 @@ fun GameEnd(
                 contentColor = MaterialTheme.colorScheme.onErrorContainer
             )
         ) {
-            Text("Quit Game")
+            Text("Forfeit?")
         }
     }
 }

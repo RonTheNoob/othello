@@ -41,6 +41,7 @@ fun SessionsScreen(
     multiplayerViewModel: MultiplayerViewModel
 ) {
     LaunchedEffect(Unit) {
+        multiplayerViewModel.resetGameState()
         multiplayerViewModel.fetchGameSessions()
     }
 

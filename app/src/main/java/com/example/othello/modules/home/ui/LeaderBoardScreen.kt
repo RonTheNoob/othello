@@ -24,6 +24,7 @@ fun LeaderboardScreen(
     viewModel: LeaderboardViewModel
 ) {
     val leaderboard by viewModel.users.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
     val loading by viewModel.loading.collectAsState()
 
     Box(
@@ -57,9 +58,37 @@ fun LeaderboardScreen(
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
             } else {
-                LazyColumn {
+                LazyColumn (
+                    modifier = Modifier.weight(1f)
+                ){
                     items(leaderboard) { user ->
                         LeaderboardItem(user = user)
+                    }
+                }
+            }
+
+            currentUser?.let { user ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.DarkGray)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Your Stats (${user.username})",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = "Wins: ${user.wins} | Losses: ${user.losses} | Draws: ${user.draws}",
+                            fontSize = 14.sp,
+                            color = Color.LightGray
+                        )
                     }
                 }
             }

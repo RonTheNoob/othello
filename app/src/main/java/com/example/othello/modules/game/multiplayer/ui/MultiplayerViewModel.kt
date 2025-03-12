@@ -129,12 +129,14 @@ class MultiplayerViewModel : ViewModel() {
                     // Determine if it's local player's turn
                     val isLocalPlayerTurn = (isHost && currentTurn == "host") || (!isHost && currentTurn == "opponent")
 
+                    val currentPlayerName = if (currentTurn == "host") hostName else opponentName ?: "Opponent"
+
                     // Set display turn text
                     val turnMessage = when {
-                        status == "waiting" -> "Waiting for opponent to join..."
+                        status == "playing" && isLocalPlayerTurn -> "Your turn!"
+                        status == "playing" && !isLocalPlayerTurn -> "Opponent's turn..."
                         status == "finished" -> "Game Over"
-                        isLocalPlayerTurn -> "Your turn!"
-                        else -> "Opponent's turn..."
+                        else -> "Game Start! $currentPlayerName's Turn!"
                     }
 
                     // Define game over message based on status
@@ -156,8 +158,8 @@ class MultiplayerViewModel : ViewModel() {
                             } else {
                                 // Normal game end
                                 when {
-                                    hostScore > opponentScore -> "Host ($hostName) wins! $hostScore to $opponentScore"
-                                    hostScore < opponentScore -> "Opponent ($opponentName) wins! $opponentScore to $hostScore"
+                                    hostScore > opponentScore -> "($hostName) wins! $hostScore to $opponentScore"
+                                    hostScore < opponentScore -> "($opponentName) wins! $opponentScore to $hostScore"
                                     else -> "It's a tie! $hostScore to $opponentScore"
                                 }
                             }
@@ -178,7 +180,7 @@ class MultiplayerViewModel : ViewModel() {
                         // Calculate if the board is not fully populated (indicating a quit rather than normal game end)
                         val totalPieces = boardArray.sumOf { row -> row.count { it != ' ' } }
                         if (totalPieces < 60) { // Not a full or almost full board
-                            "Opponent quit. You win!"
+                            "Opponent has quit. You win!"
                         } else {
                             "" // Normal game end
                         }
@@ -206,6 +208,9 @@ class MultiplayerViewModel : ViewModel() {
     }
 
     fun fetchGameSessions() {
+        // Store current user's ID for filtering
+        val currentUserId = localPlayerId
+
         db.collection("sessions")
             .whereEqualTo("status", "waiting") // Only fetch waiting sessions
             .addSnapshotListener { snapshot, error ->
@@ -216,11 +221,17 @@ class MultiplayerViewModel : ViewModel() {
 
                 if (snapshot != null) {
                     viewModelScope.launch {
+                        // Filter out sessions where the current user is the host
                         _gameList.value = snapshot.documents.mapNotNull { doc ->
-                            GameList(
-                                hostName = doc.getString("hostName") ?: "Unknown",
-                                sessionId = doc.id
-                            )
+                            val hostId = doc.getString("hostId")
+                            if (hostId != currentUserId) {
+                                GameList(
+                                    hostName = doc.getString("hostName") ?: "Unknown",
+                                    sessionId = doc.id
+                                )
+                            } else {
+                                null // Skip this session if user is the host
+                            }
                         }
                     }
                 }
@@ -237,7 +248,7 @@ class MultiplayerViewModel : ViewModel() {
                 .update(
                     "opponentId", userId,
                     "opponentName", username,
-                    "status", "playing" // Update status to "playing"
+                    "status", "playing", // Update status to "playing"
                 )
                 .addOnSuccessListener {
                     // Update the local game session state
@@ -307,6 +318,11 @@ class MultiplayerViewModel : ViewModel() {
         updateGameSession(sessionId)
     }
 
+    fun resetGameState() {
+        _gameState.value = GameState()
+        sessionListener?.remove()
+        sessionListener = null
+    }
 
     fun makeMove(x: Int, y: Int) {
         val sessionId = _gameSession.value.sessionId ?: return

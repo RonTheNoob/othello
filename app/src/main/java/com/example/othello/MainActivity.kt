@@ -37,19 +37,9 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
 
                 val authState by authViewModel.uiState.collectAsState()
-//                val gameState by multiplayerViewModel.gameState.collectAsState()
-//                val authEmail = authState.email
-
-//                var startDestination = "sessions"
-//                if (authState.currentUser == null) {
-//                    startDestination = "login"
-//                } else if (gameState.currentGameSession != null) {
-//                    // user has current joined the game
-//                    startDestination = "game"
-//                }
 
                 var startDestination = "home"
-                if (authState.currentUser == null) {
+                if (authState.email == null) {
                     startDestination = "login"
                 }
 

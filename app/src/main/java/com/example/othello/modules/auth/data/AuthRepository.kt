@@ -162,7 +162,8 @@ class AuthRepository : AuthRepositoryInterface {
         } catch(e: com.google.firebase.auth.FirebaseAuthUserCollisionException) {
             onResult("The email is already in use by another account.")
         } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "An error has occurred. Please try again.")
+            Log.e("REGISTER_USER", "Error: ${e.message}")
+            onResult("Signup failed, try again")
         }
     }
 

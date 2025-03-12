@@ -71,25 +71,6 @@ class AuthViewModel(private val authRepository: AuthRepositoryInterface) : ViewM
         }
     }
 
-//    fun signInUserWithEmailAndPassword(email: String, password: String) {
-//        // Sign in the user with the provided email and password
-//        Firebase.auth.signInWithEmailAndPassword(email, password)
-//            .addOnCompleteListener { task ->
-//                if (task.isSuccessful) {
-//                    val currentUser = task.result.user
-//
-//                    _uiState.update { currentState
-//                        ->
-//                        currentState.copy(
-//                            email = currentUser?.email,
-//                        )
-//                    }
-//                } else {
-//                    Log.w("FIREBASE_REGISTER", "signInWithEmailAndPassword:failure")
-//                }
-//            }
-//    }
-
     fun signInWithUsername(username: String, password: String) {
         _uiState.update { it.copy(loading = true, errorText = null) } // Start loading
         viewModelScope.launch {
