@@ -5,10 +5,13 @@ data class GameState(
     val currentTurn: String = "player",
     val playerTile: Char = 'X',
     val computerTile: Char = 'O',
+    val flippedTiles: List<Pair<Int, Int>> = emptyList(),
     val gameOver: Boolean = false,
     val validMoves: List<Pair<Int, Int>> = emptyList(),
-    val message: String = ""
-
+    val message: String = "",
+    val turnMessage: String = "", // Message for turn indication
+    val gameOverMessage: String = "", // Message for game over
+    val opponentQuitMessage: String = "" // Message for opponent quitting
 ) {
 
     // Following code is because there is a property with an 'Array' type in a 'data' class
@@ -24,6 +27,7 @@ data class GameState(
         if (currentTurn != other.currentTurn) return false
         if (playerTile != other.playerTile) return false
         if (computerTile != other.computerTile) return false
+        if (flippedTiles != other.flippedTiles) return false
         if (gameOver != other.gameOver) return false
         if (validMoves != other.validMoves) return false
         if (message != other.message) return false
@@ -36,6 +40,7 @@ data class GameState(
         result = 31 * result + currentTurn.hashCode()
         result = 31 * result + playerTile.hashCode()
         result = 31 * result + computerTile.hashCode()
+        result = 31 * result + flippedTiles.hashCode()
         result = 31 * result + gameOver.hashCode()
         result = 31 * result + validMoves.hashCode()
         result = 31 * result + message.hashCode()

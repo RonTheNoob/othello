@@ -19,7 +19,7 @@ class OthelloViewModel : ViewModel() {
     }
 
     fun resetGame() {
-        val newBoard = Array(8) {MutableList(8) {' '}}
+        val newBoard = Array(8) { MutableList(8) { ' ' } }
         gameLogic.resetBoard(newBoard)
 
         val playerTile = 'X' // default but can be changed if you want
@@ -49,6 +49,51 @@ class OthelloViewModel : ViewModel() {
         )
     }
 
+//    fun makePlayerMove(x: Int, y: Int) {
+//        val currentState = _gameState.value
+//
+//        if (currentState.gameOver || currentState.currentTurn != "player") {
+//            return
+//        }
+//
+//        val move = gameLogic.makeMove(
+//            currentState.board,
+//            currentState.playerTile,
+//            x,
+//            y
+//        )
+//
+//        if (move) {
+//            val flippedTiles = gameLogic.getFlippedTiles(currentState.board, currentState.playerTile, x, y)
+//
+//            // this checks if computer can move
+//            val computerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.computerTile)
+//
+//            if(computerValidMoves.isNotEmpty()) {
+//                _gameState.value = currentState.copy(
+//                    currentTurn = "computer",
+//                    message = "Computer's turn",
+//                    flippedTiles = flippedTiles
+//                )
+//                makeComputerMove()
+//            } else {
+//                // this is for the player
+//                val playerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.playerTile)
+//
+//                if (playerValidMoves.isEmpty()) {
+//                    // if no more moves, then it's game over of course
+//                    endGame()
+//                } else {
+//                    _gameState.value = currentState.copy(
+//                        validMoves = playerValidMoves,
+//                        message = "Computer has no moves. Your turn!",
+//                        flippedTiles = flippedTiles
+//                    )
+//                }
+//            }
+//        }
+//    }
+
     fun makePlayerMove(x: Int, y: Int) {
         val currentState = _gameState.value
 
@@ -56,73 +101,132 @@ class OthelloViewModel : ViewModel() {
             return
         }
 
-        val move = gameLogic.makeMove(
-            currentState.board,
-            currentState.playerTile,
-            x,
-            y
+        // Check if the move is valid and get the tiles to flip
+        val tilesToFlipAny = gameLogic.isValidMove(currentState.board, currentState.playerTile, x, y)
+        if (tilesToFlipAny == false) {
+            return
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val tilesToFlip = tilesToFlipAny as List<Pair<Int, Int>>
+
+        // Make the move and update the board
+        gameLogic.makeMove(currentState.board, currentState.playerTile, x, y)
+
+        // Update the state with the tiles to flip
+        _gameState.value = currentState.copy(
+            currentTurn = "computer",
+            message = "Computer's turn",
+            flippedTiles = tilesToFlip
         )
 
-        if (move) {
-            // this checks if computer can move
-            val computerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.computerTile)
-
-            if(computerValidMoves.isNotEmpty()) {
-                _gameState.value = currentState.copy(
-                    currentTurn = "computer",
-                    message = "Computer's turn",
-                )
-                makeComputerMove()
+        // Check if the computer can move
+        val computerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.computerTile)
+        if (computerValidMoves.isNotEmpty()) {
+            makeComputerMove()
+        } else {
+            // Check if the player can move
+            val playerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.playerTile)
+            if (playerValidMoves.isEmpty()) {
+                endGame()
             } else {
-                // this is for the player
-                val playerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.playerTile)
-
-                if (playerValidMoves.isEmpty()) {
-                    // if no more moves, then it's game over of course
-                    endGame()
-                } else {
-                    _gameState.value = currentState.copy(
-                        validMoves = playerValidMoves,
-                        message = "Computer has no moves. Your turn!",
-                    )
-                }
+                _gameState.value = currentState.copy(
+                    validMoves = playerValidMoves,
+                    message = "Computer has no moves. Your turn!"
+                )
             }
         }
     }
 
+
     private fun makeComputerMove() {
         viewModelScope.launch {
-            delay(1000)
+            delay(2000)
 
             val currentState = _gameState.value
             val move = gameLogic.getComputerMove(currentState.board, currentState.computerTile)
 
+            // Check if the move is valid and get the tiles to flip
+            val tilesToFlipAny = gameLogic.isValidMove(currentState.board, currentState.computerTile, move.first, move.second)
+            if (tilesToFlipAny == false) {
+                return@launch
+            }
+
+            // Cast the result to a list of tiles to flip
+            @Suppress("UNCHECKED_CAST")
+            val tilesToFlip = tilesToFlipAny as List<Pair<Int, Int>>
+
+            // Make the move and update the board
             gameLogic.makeMove(currentState.board, currentState.computerTile, move.first, move.second)
 
-            // check if the player can do a move
+            // Check if the player can move
             val playerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.playerTile)
 
-            if(playerValidMoves.isNotEmpty()) {
+            if (playerValidMoves.isNotEmpty()) {
                 _gameState.value = currentState.copy(
                     currentTurn = "player",
                     validMoves = playerValidMoves,
-                    message = "Your turn!"
+                    message = "Your turn!",
+                    flippedTiles = tilesToFlip // Update flippedTiles
                 )
             } else {
-                // check if the computer can make a move
+                // Check if the computer can move
                 val computerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.computerTile)
 
                 if (computerValidMoves.isEmpty()) {
-                    // if no more moves, then it's game over of course
                     endGame()
                 } else {
                     _gameState.value = currentState.copy(
-                        message = "You have no moves. Computer's turn!"
+                        message = "You have no moves. Computer's turn!",
+                        flippedTiles = tilesToFlip // Update flippedTiles
                     )
                     makeComputerMove()
                 }
             }
         }
+    }
+
+//    private fun makeComputerMove() {
+//        viewModelScope.launch {
+//            delay(1000)
+//
+//            val currentState = _gameState.value
+//            val move = gameLogic.getComputerMove(currentState.board, currentState.computerTile)
+//
+//            gameLogic.makeMove(currentState.board, currentState.computerTile, move.first, move.second)
+//
+//            val flippedTiles = gameLogic.getFlippedTiles(currentState.board, currentState.computerTile, move.first, move.second)
+//
+//            // check if the player can do a move
+//            val playerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.playerTile)
+//
+//            if(playerValidMoves.isNotEmpty()) {
+//                _gameState.value = currentState.copy(
+//                    currentTurn = "player",
+//                    validMoves = playerValidMoves,
+//                    message = "Your turn!",
+//                    flippedTiles = flippedTiles
+//                )
+//            } else {
+//                // check if the computer can make a move
+//                val computerValidMoves = gameLogic.getValidMoves(currentState.board, currentState.computerTile)
+//
+//                if (computerValidMoves.isEmpty()) {
+//                    // if no more moves, then it's game over of course
+//                    endGame()
+//                } else {
+//                    _gameState.value = currentState.copy(
+//                        message = "You have no moves. Computer's turn!",
+//                        flippedTiles = flippedTiles
+//                    )
+//                    makeComputerMove()
+//                }
+//            }
+//        }
+//    }
+
+    fun clearFlippedTiles() {
+        _gameState.value = _gameState.value.copy(flippedTiles = emptyList())
     }
 
     private fun endGame() {
