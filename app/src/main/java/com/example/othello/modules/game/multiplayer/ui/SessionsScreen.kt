@@ -128,7 +128,7 @@ fun SessionsScreen(
                         },
                         supportingContent = {
                             Text(
-                                text = "Session ID: ${game.sessionId}",
+                                text = "Players: 1/2",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },

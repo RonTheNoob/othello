@@ -1,8 +1,5 @@
 package com.example.othello.modules.home.data
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -22,16 +19,33 @@ class LeaderboardViewModel : ViewModel() {
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> get() = _loading
 
+    // Firebase Auth instance
+    private val auth = FirebaseAuth.getInstance()
+
+    // Auth state listener
+    private val authStateListener = FirebaseAuth.AuthStateListener {
+        fetchCurrentUserData()
+        fetchLeaderboard()
+    }
+
     init {
+        // Register the auth state listener
+        auth.addAuthStateListener(authStateListener)
+
         fetchLeaderboard()
         fetchCurrentUserData()
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        auth.removeAuthStateListener(authStateListener)
+    }
+
     private fun fetchLeaderboard() {
         viewModelScope.launch {
-            _loading.value = true // Set loading to true
+            _loading.value = true
             _users.value = getLeaderboardData()
-            _loading.value = false // Set loading to false after data is fetched
+            _loading.value = false // Sets loading to false after data is fetched
         }
     }
 
@@ -58,7 +72,8 @@ class LeaderboardViewModel : ViewModel() {
     private fun fetchCurrentUserData() {
         viewModelScope.launch {
             val db = FirebaseFirestore.getInstance()
-            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid // Get the current user's ID
+            val currentUserId = auth.currentUser?.uid // Get the current user's ID
+
             if (currentUserId != null) {
                 try {
                     val doc = db.collection("Users").document(currentUserId).get().await()
@@ -71,6 +86,7 @@ class LeaderboardViewModel : ViewModel() {
                 } catch (e: Exception) {
                     // Handle error
                     e.printStackTrace()
+                    _currentUser.value = null
                 }
             } else {
                 // Handle case where user is not logged in

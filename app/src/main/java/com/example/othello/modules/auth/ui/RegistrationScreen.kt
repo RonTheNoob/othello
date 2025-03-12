@@ -124,7 +124,7 @@ fun RegistrationScreen(
                                 if (success) {
                                     showSuccessDialog = true
                                 } else {
-                                    // Handle registration failure (e.g., show a Snackbar)
+
                                 }
                             }
                         }
