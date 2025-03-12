@@ -71,28 +71,48 @@ class AuthViewModel(private val authRepository: AuthRepositoryInterface) : ViewM
         }
     }
 
-    fun signInUserWithEmailAndPassword(email: String, password: String) {
-        // Sign in the user with the provided email and password
-        Firebase.auth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val currentUser = task.result.user
-
-                    _uiState.update { currentState
-                        ->
-                        currentState.copy(
-                            email = currentUser?.email,
-                        )
-                    }
-                } else {
-                    Log.w("FIREBASE_REGISTER", "signInWithEmailAndPassword:failure")
-                }
-            }
-    }
+//    fun signInUserWithEmailAndPassword(email: String, password: String) {
+//        // Sign in the user with the provided email and password
+//        Firebase.auth.signInWithEmailAndPassword(email, password)
+//            .addOnCompleteListener { task ->
+//                if (task.isSuccessful) {
+//                    val currentUser = task.result.user
+//
+//                    _uiState.update { currentState
+//                        ->
+//                        currentState.copy(
+//                            email = currentUser?.email,
+//                        )
+//                    }
+//                } else {
+//                    Log.w("FIREBASE_REGISTER", "signInWithEmailAndPassword:failure")
+//                }
+//            }
+//    }
 
     fun signInWithUsername(username: String, password: String) {
+        _uiState.update { it.copy(loading = true, errorText = null) } // Start loading
         viewModelScope.launch {
-            authRepository
+            val errorMessage = authRepository.signInWithUsername(username, password)
+            if (errorMessage == null) {
+                // Login successful
+                val user = authRepository.getCurrentUser()
+                _uiState.update {
+                    it.copy(
+                        email = user?.email ?: username,
+                        errorText = null,
+                        loading = false // Stop loading
+                    )
+                }
+            } else {
+                // Login failed
+                _uiState.update {
+                    it.copy(
+                        errorText = errorMessage,
+                        loading = false // Stop loading
+                    )
+                }
+            }
         }
     }
 

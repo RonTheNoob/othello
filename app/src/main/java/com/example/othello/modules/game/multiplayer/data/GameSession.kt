@@ -11,7 +11,8 @@ data class GameSession(
     val board: List<String> = List(64) { " " }, // Flat list for 8x8 board
     val currentTurn: String = "host", // host or opponent
     val hostTile: String = "X", // Host is always 'X'
-    val opponentTile: String = "O" // Opponent is always 'O'
+    val opponentTile: String = "O", // Opponent is always 'O'
+    val flippedTiles: List<Pair<Int, Int>> = emptyList()
 )
 
 data class GameList(

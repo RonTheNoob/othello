@@ -36,19 +36,20 @@ class MultiplayerViewModel : ViewModel() {
     private val gameLogic = OthelloGameLogic()
 
     // Track the local player's role (host or opponent)
-    private var isHost = false
+    var isHost = false
+        private set
     private var localPlayerId: String? = null
 
     fun createGameSession(hostEmail: String, onSuccess: (String) -> Unit, onFailure: (Exception) -> Unit) {
         fetchUserDetails(hostEmail, { userId, username ->
             val sessionId = db.collection("sessions").document().id
-            val initialBoard = gameLogic.getInitialBoard().toFlatList() // Convert to flat list
+            val initialBoard = gameLogic.getInitialBoard().toFlatList() // Convert to flat list (from helper function made below)
             val gameSession = GameSession(
                 sessionId = sessionId,
                 hostId = userId,
                 hostName = username,
                 status = "waiting",
-                board = initialBoard // Use the flat list
+                board = initialBoard
             )
 
             db.collection("sessions").document(sessionId)
@@ -56,7 +57,7 @@ class MultiplayerViewModel : ViewModel() {
                 .addOnSuccessListener {
                     _gameSession.update { gameSession }
                     isHost = true // Mark as host
-                    localPlayerId = userId // Store the local player ID
+                    localPlayerId = userId // Stores the local player ID
                     onSuccess(sessionId)
                 }
                 .addOnFailureListener { onFailure(it) }
@@ -88,14 +89,13 @@ class MultiplayerViewModel : ViewModel() {
                     val hostName = doc.getString("hostName") ?: ""
                     val opponentName = doc.getString("opponentName")
                     val winnerId = doc.getString("winnerId")
+                    val firestoreFlippedTiles = doc.get("flippedTiles") as? List<Map<String, Int>> ?: emptyList()
 
-                    // Check if the game ended due to the opponent quitting
-                    if (status == "finished" && winnerId != null && winnerId != localPlayerId) {
-                        // Opponent quit, local player wins
-                        _gameState.value = _gameState.value.copy(
-                            gameOver = true,
-                            message = "Opponent quit. You win!"
-                        )
+                    // Convert Firestore-compatible flippedTiles to List<Pair<Int, Int>>
+                    val flippedTiles = firestoreFlippedTiles.map {
+                        val x = (it["x"] as? Long)?.toInt() ?: 0
+                        val y = (it["y"] as? Long)?.toInt() ?: 0
+                        Pair(x, y)
                     }
 
                     // Convert flat list to nested array
@@ -113,16 +113,14 @@ class MultiplayerViewModel : ViewModel() {
                             currentTurn = currentTurn,
                             hostTile = hostTile,
                             opponentTile = opponentTile,
-                            status = status
+                            status = status,
+                            flippedTiles = flippedTiles,
+                            winnerId = winnerId
                         )
                     }
 
                     // Determine if current player is host
                     isHost = hostId == localPlayerId
-
-                    // Log player roles for debugging
-                    Log.d("Multiplayer", "Player role: ${if (isHost) "Host" else "Opponent"}")
-                    Log.d("Multiplayer", "Local ID: $localPlayerId, Host ID: $hostId, Opponent ID: $opponentId")
 
                     // Determine local player's tile and opponent's tile
                     val localPlayerTile = if (isHost) hostTile[0] else opponentTile[0]
@@ -130,42 +128,79 @@ class MultiplayerViewModel : ViewModel() {
 
                     // Determine if it's local player's turn
                     val isLocalPlayerTurn = (isHost && currentTurn == "host") || (!isHost && currentTurn == "opponent")
-                    Log.d("Multiplayer", "Current turn: $currentTurn, Is local player turn: $isLocalPlayerTurn")
 
                     // Set display turn text
-                    val displayTurn = if (isLocalPlayerTurn) "player" else "computer"
-
-                    // Calculate valid moves for the current player's turn
-                    val validMoves = if (isLocalPlayerTurn) {
-                        gameLogic.getValidMoves(boardArray, localPlayerTile)
-                    } else {
-                        emptyList()
+                    val turnMessage = when {
+                        status == "waiting" -> "Waiting for opponent to join..."
+                        status == "finished" -> "Game Over"
+                        isLocalPlayerTurn -> "Your turn!"
+                        else -> "Opponent's turn..."
                     }
 
-                    Log.d("Multiplayer", "Valid moves count: ${validMoves.size}")
+                    // Define game over message based on status
+                    val gameOverMessage = if (status == "finished") {
+                        val scores = gameLogic.getScoreOfBoard(boardArray)
+                        val hostScore = scores[hostTile[0]] ?: 0
+                        val opponentScore = scores[opponentTile[0]] ?: 0
 
-                    // Generate appropriate message
-                    val message = when {
-                        status == "waiting" -> "Waiting for opponent to join..."
-                        status == "finished" -> "Game over!"
-                        isLocalPlayerTurn -> "Your turn!"
-                        else -> "Opponent's turn!"
+                        // Determine if the game ended normally or due to a player quitting
+                        if (winnerId != null && (winnerId == hostId || winnerId == opponentId)) {
+                            // Check if the winner won due to the other player quitting
+                            val quitterExists = hostScore + opponentScore < 60 // Not a full board means likely a quit
+
+                            if (quitterExists) {
+                                // Someone quit
+                                val winnerName = if (winnerId == hostId) hostName else opponentName ?: "Opponent"
+                                val loserName = if (winnerId != hostId) hostName else opponentName ?: "Opponent"
+                                "$winnerName wins! $loserName quit the game."
+                            } else {
+                                // Normal game end
+                                when {
+                                    hostScore > opponentScore -> "Host ($hostName) wins! $hostScore to $opponentScore"
+                                    hostScore < opponentScore -> "Opponent ($opponentName) wins! $opponentScore to $hostScore"
+                                    else -> "It's a tie! $hostScore to $opponentScore"
+                                }
+                            }
+                        } else {
+                            // Normal game end without explicit winner
+                            when {
+                                hostScore > opponentScore -> "$hostName wins! $hostScore to $opponentScore"
+                                hostScore < opponentScore -> "$opponentName wins! $opponentScore to $hostScore"
+                                else -> "It's a tie! $hostScore to $opponentScore"
+                            }
+                        }
+                    } else {
+                        ""
+                    }
+
+                    // Check if the game ended due to the opponent quitting
+                    val opponentQuitMessage = if (status == "finished" && winnerId != null && winnerId == localPlayerId) {
+                        // Calculate if the board is not fully populated (indicating a quit rather than normal game end)
+                        val totalPieces = boardArray.sumOf { row -> row.count { it != ' ' } }
+                        if (totalPieces < 60) { // Not a full or almost full board
+                            "Opponent quit. You win!"
+                        } else {
+                            "" // Normal game end
+                        }
+                    } else {
+                        ""
                     }
 
                     // Update the local game state
                     _gameState.value = _gameState.value.copy(
                         board = boardArray,
-                        currentTurn = displayTurn,
+                        currentTurn = if (isLocalPlayerTurn) "player" else "computer",
                         playerTile = localPlayerTile,
                         computerTile = opponentPlayerTile,
-                        validMoves = validMoves,
-                        message = message
+                        validMoves = if (isLocalPlayerTurn && status != "finished")
+                            gameLogic.getValidMoves(boardArray, localPlayerTile)
+                        else
+                            emptyList(),
+                        turnMessage = turnMessage,
+                        gameOverMessage = gameOverMessage,
+                        opponentQuitMessage = opponentQuitMessage,
+                        gameOver = status == "finished"
                     )
-
-                    // Check if game is over
-                    if (status == "playing") {
-                        checkForGameOver(sessionId, boardArray, hostTile[0], opponentTile[0])
-                    }
                 }
             }
     }
@@ -272,6 +307,7 @@ class MultiplayerViewModel : ViewModel() {
         updateGameSession(sessionId)
     }
 
+
     fun makeMove(x: Int, y: Int) {
         val sessionId = _gameSession.value.sessionId ?: return
         val currentSession = _gameSession.value
@@ -288,7 +324,7 @@ class MultiplayerViewModel : ViewModel() {
         // Get the correct tile based on player role
         val tile = if (isHost) currentSession.hostTile[0] else currentSession.opponentTile[0]
 
-        // Convert flat list to nested array
+        // this converts the flat list to nested array (from helper function made below)
         val boardArray = currentSession.board.toNestedArray()
 
         // Check if the move is valid
@@ -298,13 +334,13 @@ class MultiplayerViewModel : ViewModel() {
             // Make the move
             gameLogic.makeMoveMulti(boardArray, tile, x, y)
 
-            // Convert nested array back to flat list
+            // Converts the nested array back to flat list
             val updatedBoard = boardArray.toFlatList()
 
             // Switch turns
             val nextTurn = if (currentSession.currentTurn == "host") "opponent" else "host"
 
-            // Check if the next player has valid moves
+            // Checks if the next player has valid moves
             val nextPlayerTile = if (nextTurn == "host") currentSession.hostTile[0] else currentSession.opponentTile[0]
             val nextPlayerHasValidMoves = gameLogic.hasValidMovesMulti(boardArray, nextPlayerTile)
 
@@ -325,14 +361,25 @@ class MultiplayerViewModel : ViewModel() {
 
             Log.d("Multiplayer", "Move made at ($x,$y), switching turn from ${currentSession.currentTurn} to $finalNextTurn")
 
-            // Update Firestore
+            // Convert flippedTiles to a Firestore-compatible format (List<Map<String, Int>>)
+            val firestoreFlippedTiles = tilesToFlip.map {
+                mapOf("x" to it.first.toInt(), "y" to it.second.toInt())
+            }
+
+            // Update Firestore with the new board, currentTurn, and flippedTiles
             db.collection("sessions").document(sessionId)
                 .update(
                     "board", updatedBoard,
-                    "currentTurn", finalNextTurn
+                    "currentTurn", finalNextTurn,
+                    "flippedTiles", firestoreFlippedTiles
                 )
                 .addOnSuccessListener {
                     Log.d("Multiplayer", "Move made successfully")
+
+                    // Check if the game is over
+                    val hostTile = currentSession.hostTile[0]
+                    val opponentTile = currentSession.opponentTile[0]
+                    checkForGameOver(sessionId, boardArray, hostTile, opponentTile)
                 }
                 .addOnFailureListener {
                     Log.e("Multiplayer", "Failed to make move", it)
@@ -352,12 +399,6 @@ class MultiplayerViewModel : ViewModel() {
             val hostScore = scores[hostTile] ?: 0
             val opponentScore = scores[opponentTile] ?: 0
 
-            val message = when {
-                hostScore > opponentScore -> "Host wins! $hostScore to $opponentScore"
-                hostScore < opponentScore -> "Opponent wins! $opponentScore to $hostScore"
-                else -> "It's a tie! $hostScore to $opponentScore"
-            }
-
             val winnerId = when {
                 hostScore > opponentScore -> _gameSession.value.hostId
                 hostScore < opponentScore -> _gameSession.value.opponentId
@@ -370,16 +411,25 @@ class MultiplayerViewModel : ViewModel() {
                     "winnerId", winnerId
                 )
                 .addOnSuccessListener {
-                    Log.d("Multiplayer", "Game over: $message")
+                    Log.d("Multiplayer", "Game over: winner=$winnerId")
                     updateUserStats(winnerId, _gameSession.value.hostId, _gameSession.value.opponentId)
                 }
                 .addOnFailureListener { Log.e("Multiplayer", "Failed to update game session", it) }
-
-            _gameState.value = _gameState.value.copy(
-                gameOver = true,
-                message = message
-            )
         }
+    }
+
+    fun clearFlippedTiles() {
+        val sessionId = _gameSession.value.sessionId ?: return
+
+        // Clear flippedTiles in Firestore
+        db.collection("sessions").document(sessionId)
+            .update("flippedTiles", emptyList<Pair<Int, Int>>())
+            .addOnSuccessListener {
+                Log.d("Multiplayer", "Flipped tiles cleared")
+            }
+            .addOnFailureListener {
+                Log.e("Multiplayer", "Failed to clear flipped tiles", it)
+            }
     }
 
     fun handlePlayerQuit(sessionId: String) {

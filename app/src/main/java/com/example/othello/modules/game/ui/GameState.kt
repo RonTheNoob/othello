@@ -8,7 +8,10 @@ data class GameState(
     val flippedTiles: List<Pair<Int, Int>> = emptyList(),
     val gameOver: Boolean = false,
     val validMoves: List<Pair<Int, Int>> = emptyList(),
-    val message: String = ""
+    val message: String = "",
+    val turnMessage: String = "", // Message for turn indication
+    val gameOverMessage: String = "", // Message for game over
+    val opponentQuitMessage: String = "" // Message for opponent quitting
 ) {
 
     // Following code is because there is a property with an 'Array' type in a 'data' class

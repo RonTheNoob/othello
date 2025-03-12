@@ -20,6 +20,7 @@ import com.example.othello.modules.game.multiplayer.ui.SessionsScreen
 import com.example.othello.modules.game.multiplayer.ui.MultiplayerScreen
 import com.example.othello.modules.game.ui.OthelloGame
 import com.example.othello.modules.home.data.LeaderboardViewModel
+import com.example.othello.modules.home.ui.CreditsScreen
 import com.example.othello.modules.home.ui.HomeScreen
 import com.example.othello.modules.home.ui.LeaderboardScreen
 import com.example.othello.modules.home.ui.TutorialScreen
@@ -47,7 +48,7 @@ class MainActivity : ComponentActivity() {
 //                    startDestination = "game"
 //                }
 
-                var startDestination = "sessions"
+                var startDestination = "home"
                 if (authState.currentUser == null) {
                     startDestination = "login"
                 }
@@ -91,6 +92,10 @@ class MainActivity : ComponentActivity() {
 
                     composable("tutorial") {
                         TutorialScreen(navController = navController)
+                    }
+
+                    composable("credits") {
+                        CreditsScreen(navController = navController)
                     }
 
                     // MULTIPLAYER (FOR TESTING)

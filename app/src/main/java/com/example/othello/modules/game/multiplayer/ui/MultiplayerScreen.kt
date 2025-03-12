@@ -1,5 +1,9 @@
 package com.example.othello.modules.game.multiplayer.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,7 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,9 +29,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -33,6 +43,7 @@ import com.example.othello.R
 import com.example.othello.modules.game.data.OthelloGameLogic
 import com.example.othello.modules.game.multiplayer.data.GameSession
 import com.example.othello.modules.game.ui.GameState
+import kotlinx.coroutines.delay
 
 @Composable
 fun MultiplayerScreen(
@@ -47,6 +58,84 @@ fun MultiplayerScreen(
     val gameState by multiplayerViewModel.gameState
     val gameSession by multiplayerViewModel.gameSession.collectAsState()
 
+    // State to control the visibility of the dialog
+    var showOpponentQuitDialog by remember { mutableStateOf(false) }
+    var showGameOverDialog by remember { mutableStateOf(false) }
+
+    // Show the dialog if the opponent quits
+    LaunchedEffect(gameState.opponentQuitMessage) {
+        if (gameState.opponentQuitMessage.isNotEmpty()) {
+            showOpponentQuitDialog = true
+        }
+    }
+
+    // Show game over dialog when the game is finished
+    LaunchedEffect(gameState.gameOver, gameState.gameOverMessage) {
+        if (gameState.gameOver && gameState.gameOverMessage.isNotEmpty() && !showOpponentQuitDialog) {
+            showGameOverDialog = true
+        }
+    }
+
+    // Dialog to show when the opponent quits
+    if (showOpponentQuitDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showOpponentQuitDialog = false
+                navController.navigate("sessions") {
+                    popUpTo("sessions") { inclusive = true }
+                }
+            },
+            title = {
+                Text("Game Over")
+            },
+            text = {
+                Text(gameState.opponentQuitMessage)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showOpponentQuitDialog = false
+                        navController.navigate("sessions") {
+                            popUpTo("sessions") { inclusive = true }
+                        }
+                    }
+                ) {
+                    Text("Return to Lobby")
+                }
+            }
+        )
+    }
+
+    // Dialog to show when the game is over
+    if (showGameOverDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showGameOverDialog = false
+                navController.navigate("sessions") {
+                    popUpTo("sessions") { inclusive = true }
+                }
+            },
+            title = {
+                Text("Game Over")
+            },
+            text = {
+                Text(gameState.gameOverMessage)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showGameOverDialog = false
+                        navController.navigate("sessions") {
+                            popUpTo("sessions") { inclusive = true }
+                        }
+                    }
+                ) {
+                    Text("Return to Lobby")
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .statusBarsPadding()
@@ -58,18 +147,9 @@ fun MultiplayerScreen(
         // Game status
         if (gameSession.status == "waiting") {
             WaitingForOpponent()
-        } else if (gameState.message.contains("Opponent quit")) {
-            // Show a message if the opponent quit
-            Text(
-                text = "Opponent quit. You win!",
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.Green,
-                modifier = Modifier.padding(16.dp),
-                textAlign = TextAlign.Center
-            )
         } else {
             // Game Info
-            MultiplayerGameInfo(gameState, gameSession)
+            MultiplayerGameInfo(gameState, gameSession, isHost = multiplayerViewModel.isHost)
 
             // Board
             BoardView(
@@ -77,13 +157,15 @@ fun MultiplayerScreen(
                 validMoves = gameState.validMoves,
                 onCellClick = { x, y ->
                     multiplayerViewModel.makeMove(x, y)
-                }
+                },
+                flippedTiles = gameSession.flippedTiles,
+                multiplayerViewModel = multiplayerViewModel
             )
 
             // Game End or Quit
             GameEnd(
                 navController = navController,
-                gameOver = gameState.gameOver || gameSession.status == "finished",
+                gameOver = gameState.gameOver,
                 multiplayerViewModel = multiplayerViewModel,
                 sessionId = sessionId
             )
@@ -123,8 +205,18 @@ fun WaitingForOpponent() {
 fun BoardView(
     board: Array<MutableList<Char>>,
     validMoves: List<Pair<Int, Int>>,
-    onCellClick: (Int, Int) -> Unit
+    onCellClick: (Int, Int) -> Unit,
+    flippedTiles: List<Pair<Int, Int>>,
+    multiplayerViewModel: MultiplayerViewModel
 ) {
+    LaunchedEffect(flippedTiles) {
+        if (flippedTiles.isNotEmpty()) {
+            val totalDelay = flippedTiles.size * 100L + 1000L // Total delay for all tiles to flip
+            delay(totalDelay)
+            multiplayerViewModel.clearFlippedTiles()
+        }
+    }
+
     Column(
         modifier = Modifier
             .background(Color(0xFF008000)) // Green board color
@@ -141,7 +233,10 @@ fun BoardView(
                         isValidMove = isValidMove,
                         onClick = { onCellClick(x, y) },
                         gridColor = Color.Black,
-                        validMoveColor = Color.Green.copy(alpha = 0.5f)
+                        validMoveColor = Color.Green.copy(alpha = 0.5f),
+                        flippedTiles = flippedTiles,
+                        x = x,
+                        y = y
                     )
                 }
             }
@@ -155,21 +250,56 @@ fun CellView(
     isValidMove: Boolean,
     onClick: () -> Unit,
     gridColor: Color,
-    validMoveColor: Color
+    validMoveColor: Color,
+    flippedTiles: List<Pair<Int, Int>>,
+    x: Int,
+    y: Int
 ) {
+    val isFlipped = flippedTiles.contains(Pair(x, y))
+    val index = flippedTiles.indexOf(Pair(x, y)) // Get the index of the tile in the flippedTiles list
+    val delay = index * 100L // Add a delay based on the tile's position (100ms per tile)
+
+    // Animate the rotation
+    val rotation by animateFloatAsState(
+        targetValue = if (isFlipped) 180f else 0f,
+        animationSpec = tween(
+            durationMillis = 1000, // Duration of the flip animation
+            delayMillis = delay.toInt(), // Staggered delay for the wavy effect
+            easing = FastOutSlowInEasing
+        )
+    )
+
+    // Determine the target color based on the cell value
+    val targetColor = if (cell == 'X') Color.Black else Color.White
+    val oppositeColor = if (cell == 'X') Color.White else Color.Black
+
+    // Animate the color change only for flipped tiles
+    val animatedColor by animateColorAsState(
+        targetValue = if (isFlipped && rotation > 90f) oppositeColor else targetColor, // Change color at midpoint for flipped tiles
+        animationSpec = tween(
+            durationMillis = 500, // Half the flip duration
+            delayMillis = if (isFlipped) delay.toInt() + 500 else 0, // Start color change at midpoint for flipped tiles
+            easing = FastOutSlowInEasing
+        )
+    )
+
     Box(
         modifier = Modifier
             .size(40.dp)
             .border(BorderStroke(1.dp, gridColor))
             .background(if (isValidMove) validMoveColor else Color.Transparent)
-            .clickable(onClick = onClick), // Make the cell clickable
+            .clickable(onClick = onClick) // Make the cell clickable
+            .graphicsLayer {
+            rotationY = rotation
+            cameraDistance = 8 * density
+        },
         contentAlignment = Alignment.Center
     ) {
         // Displays a circle if the cell is occupied
         if (cell != ' ') {
             Surface(
                 shape = CircleShape,
-                color = if (cell == 'X') Color.Black else Color.White,
+                color = if (isFlipped) animatedColor else targetColor,
                 modifier = Modifier
                     .size(30.dp)
                     .border(2.dp, if (cell == 'X') Color.White else Color.Black, CircleShape)
@@ -179,30 +309,19 @@ fun CellView(
 }
 
 @Composable
-fun MultiplayerGameInfo(gameState: GameState, gameSession: GameSession) {
+fun MultiplayerGameInfo(gameState: GameState, gameSession: GameSession, isHost: Boolean) {
     val gameLogic = OthelloGameLogic()
     val scores = gameLogic.getScoreOfBoard(gameState.board)
     val playerScore = scores[gameState.playerTile] ?: 0
     val opponentScore = scores[gameState.computerTile] ?: 0
-
-    if (gameSession.status == "finished") {
-        val winner = if (playerScore > opponentScore) "You" else "Opponent"
-    }
-
-    val turnIndicator = when {
-        gameSession.status == "waiting" -> "Waiting for opponent..."
-        gameSession.status == "finished" -> "Game over! ${if (playerScore > opponentScore) "You win!" else "Opponent wins!"}"
-        gameState.message.contains("Your turn") -> "Your turn"
-        else -> "Opponent's turn"
-    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(bottom = 16.dp)
     ) {
         Text(
-            text = "Multiplayer Othello",
-            style = MaterialTheme.typography.headlineMedium,
+            text = "Othello",
+            style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
@@ -210,16 +329,30 @@ fun MultiplayerGameInfo(gameState: GameState, gameSession: GameSession) {
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier.fillMaxWidth()
         ) {
+            // Your Score
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("You (${if (gameState.playerTile == 'X') "Black" else "White"})")
+                val playerName = if (isHost) {
+                    "${gameSession.hostName} (${if (gameState.playerTile == 'X') "Black" else "White"})"
+                } else {
+                    "${gameSession.opponentName ?: "You"} (${if (gameState.playerTile == 'X') "Black" else "White"})"
+                }
+
+                Text(playerName)
                 Text(
                     text = "$playerScore",
                     style = MaterialTheme.typography.headlineSmall
                 )
             }
 
+            // Opponent Score
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Opponent (${if (gameState.computerTile == 'X') "Black" else "White"})")
+                val opponentName = if (isHost) {
+                    "${gameSession.opponentName ?: "Opponent"} (${if (gameState.computerTile == 'X') "Black" else "White"})"
+                } else {
+                    "${gameSession.hostName} (${if (gameState.computerTile == 'X') "Black" else "White"})"
+                }
+
+                Text(opponentName)
                 Text(
                     text = "$opponentScore",
                     style = MaterialTheme.typography.headlineSmall
@@ -227,35 +360,63 @@ fun MultiplayerGameInfo(gameState: GameState, gameSession: GameSession) {
             }
         }
 
+        // Turn message with enhanced color/styling
+        val turnMessageColor = when {
+            gameSession.status == "finished" -> MaterialTheme.colorScheme.error
+            gameState.turnMessage == "Your turn!" -> Color.Green
+            else -> MaterialTheme.colorScheme.onBackground
+        }
+
         Text(
-            text = turnIndicator,
+            text = gameState.turnMessage,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp),
-            color = if (turnIndicator == "Your turn") Color.Green else MaterialTheme.colorScheme.onBackground
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .background(
+                    color = if (gameState.turnMessage == "Your turn!")
+                        Color.Green.copy(alpha = 0.1f)
+                    else
+                        Color.Transparent,
+                    shape = MaterialTheme.shapes.small
+                )
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            color = turnMessageColor
         )
-
-//        Text(
-//            text = gameState.message,
-//            style = MaterialTheme.typography.headlineMedium,
-//            textAlign = TextAlign.Center,
-//            modifier = Modifier.padding(top = 4.dp),
-//            color = if (turnIndicator == "Your turn") Color.Green else MaterialTheme.colorScheme.onBackground
-//        )
     }
 }
 
 @Composable
-fun GameEnd(navController: NavController, gameOver: Boolean, multiplayerViewModel: MultiplayerViewModel, sessionId: String) {
-    Row {
+fun GameEnd(
+    navController: NavController,
+    gameOver: Boolean,
+    multiplayerViewModel: MultiplayerViewModel,
+    sessionId: String
+) {
+    if (gameOver) {
+        Button(
+            onClick = {
+                navController.navigate("sessions") {
+                    popUpTo("sessions") { inclusive = true }
+                }
+            },
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
+            Text("Return to Lobby")
+        }
+    } else {
         Button(
             onClick = {
                 multiplayerViewModel.handlePlayerQuit(sessionId)
                 navController.popBackStack()
             },
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier.padding(top = 16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
         ) {
-            Text("Quit the Game?")
+            Text("Quit Game")
         }
     }
 }

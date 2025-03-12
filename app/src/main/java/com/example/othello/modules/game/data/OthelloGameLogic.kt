@@ -79,6 +79,7 @@ class OthelloGameLogic {
         if (tilesToFlip.isEmpty()) { // If no tiles were flipped, this is not a valid move.
             return false
         }
+        println("Tiles to flip: $tilesToFlip")
         return tilesToFlip
     }
 
@@ -171,6 +172,12 @@ class OthelloGameLogic {
             }
         }
         return mapOf('X' to xScore, 'O' to oScore)
+    }
+
+    // extra for singleplayer
+    fun getFlippedTiles(board: Array<MutableList<Char>>, tile: Char, xStart: Int, yStart: Int): List<Pair<Int, Int>> {
+        val tilesToFlip = isValidMove(board, tile, xStart, yStart)
+        return if (tilesToFlip is List<*>) tilesToFlip as List<Pair<Int, Int>> else emptyList()
     }
 
     // FOR MULTIPLAYER

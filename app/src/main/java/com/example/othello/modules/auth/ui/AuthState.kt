@@ -7,5 +7,6 @@ data class AuthState(
     val errorText: String? = null,
     val showGoogleSignInDialog: Boolean = false,
     val googleUsername: String? = null,
-    val currentUser: User? = null
+    val currentUser: User? = null,
+    val loading: Boolean = false
 )

@@ -1,5 +1,6 @@
 package com.example.othello.modules.game.ui
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -40,11 +41,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.othello.R
 import com.example.othello.modules.game.data.OthelloGameLogic
+import kotlinx.coroutines.delay
 
 @Composable
 fun OthelloGame(navController: NavController, viewModel: OthelloViewModel = viewModel()) {
     val gameState by viewModel.gameState
-//        val board = remember { Array(8) { Array(8) { ' ' } } }
 
     Column(
         modifier = Modifier
@@ -66,7 +67,9 @@ fun OthelloGame(navController: NavController, viewModel: OthelloViewModel = view
                 if (gameState.currentTurn == "player" && gameState.validMoves.contains(Pair(x, y))) {
                     viewModel.makePlayerMove(x, y)
                 }
-            }
+            },
+            flippedTiles = gameState.flippedTiles,
+            viewModel = viewModel
         )
 
         GameEnd(
@@ -81,8 +84,18 @@ fun OthelloGame(navController: NavController, viewModel: OthelloViewModel = view
 fun BoardView(
     board: Array<MutableList<Char>>,
     validMoves: List<Pair<Int, Int>>,
-    onCellClick: (Int, Int) -> Unit
+    onCellClick: (Int, Int) -> Unit,
+    flippedTiles: List<Pair<Int, Int>>,
+    viewModel: OthelloViewModel
 ) {
+
+    LaunchedEffect(flippedTiles) {
+        if (flippedTiles.isNotEmpty()) {
+            val totalDelay = flippedTiles.size * 100L + 1000L // Total delay for all tiles to flip
+            delay(totalDelay)
+            viewModel.clearFlippedTiles()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -100,7 +113,10 @@ fun BoardView(
                         isValidMove = isValidMove,
                         onClick = { onCellClick(x, y) },
                         gridColor = Color.Black,
-                        validMoveColor = Color.Green.copy(alpha = 0.5f)
+                        validMoveColor = Color.Green.copy(alpha = 0.5f),
+                        flippedTiles = flippedTiles,
+                        x = x,
+                        y = y
                     )
                 }
             }
@@ -114,21 +130,55 @@ fun CellView(
     isValidMove: Boolean,
     onClick: () -> Unit,
     gridColor: Color,
-    validMoveColor: Color
+    validMoveColor: Color,
+    flippedTiles: List<Pair<Int, Int>>,
+    x: Int,
+    y: Int
 ) {
+    val isFlipped = flippedTiles.contains(Pair(x, y))
+    val index = flippedTiles.indexOf(Pair(x, y)) // Get the index of the tile in the flippedTiles list
+    val delay = index * 100L // Add a delay based on the tile's position (100ms per tile)
+
+    val rotation by animateFloatAsState(
+        targetValue = if (isFlipped) 180f else 0f,
+        animationSpec = tween(
+            durationMillis = 1000,
+            delayMillis = delay.toInt(),
+            easing = FastOutSlowInEasing
+        )
+    )
+
+    // Determine the target color based on the cell value
+    val targetColor = if (cell == 'X') Color.White else Color.Black
+    val oppositeColor = if (cell == 'X') Color.Black else Color.White
+
+    // Animate the color change only for flipped tiles
+    val animatedColor by animateColorAsState(
+        targetValue = if (isFlipped && rotation > 90f) oppositeColor else targetColor, // Change color at midpoint for flipped tiles
+        animationSpec = tween(
+            durationMillis = 500, // Half the flip duration
+            delayMillis = if (isFlipped) delay.toInt() + 500 else 0, // Start color change at midpoint for flipped tiles
+            easing = FastOutSlowInEasing
+        )
+    )
+
     Box(
         modifier = Modifier
             .size(40.dp)
             .border(BorderStroke(1.dp, gridColor))
             .background(if (isValidMove) validMoveColor else Color.Transparent)
-            .clickable(onClick = onClick), // Make the cell clickable
+            .clickable(onClick = onClick) // Make the cell clickable
+            .graphicsLayer {
+                rotationY = rotation
+                cameraDistance = 8 * density
+            },
         contentAlignment = Alignment.Center
     ) {
         // Displays a circle if the cell is occupied
         if (cell != ' ') {
             Surface(
                 shape = CircleShape,
-                color = if (cell == 'X') Color.Black else Color.White,
+                color = if (isFlipped) animatedColor else targetColor, //if (cell == 'X') Color.Black else Color.White,
                 modifier = Modifier
                     .size(30.dp)
                     .border(2.dp, if (cell == 'X') Color.White else Color.Black, CircleShape)

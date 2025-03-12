@@ -159,42 +159,6 @@ class AuthRepository : AuthRepositoryInterface {
                 onResult(null)
         } ?: onResult("Signup failed, please try again")
 
-//        return try {
-//            // Check if username is already taken
-//            val userQuery = db.collection("Users")
-//                .whereEqualTo("username", username)
-//                .get()
-//                .await()
-//
-//            if (!userQuery.isEmpty) {
-//                return AuthResult.Error("Username is already taken")
-//            }
-//
-//            val result = auth.createUserWithEmailAndPassword(email, password).await()
-//            val user = result.user
-//
-//            // Creates/Registers user in Firestore
-//            user?.let {
-//                val userData = hashMapOf(
-//                    "username" to username,
-//                    "email" to email,
-//                    "userId" to it.uid,
-//                    "wins" to 0,
-//                    "losses" to 0,
-//                    "draws" to 0,
-//                    "lastLogin" to Date(),
-//                )
-//                db.collection("Users")
-//                    .document(it.uid)
-//                    .set(userData)
-//                    .await()
-//
-//                // Sign out immediately after registering
-//                auth.signOut()
-//
-//                AuthResult.Success(user, username)
-//            } ?: AuthResult.Error("Signup failed, try again")
-
         } catch(e: com.google.firebase.auth.FirebaseAuthUserCollisionException) {
             onResult("The email is already in use by another account.")
         } catch (e: Exception) {
@@ -232,44 +196,6 @@ class AuthRepository : AuthRepositoryInterface {
         }
     }
 
-//            val userQuery = db.collection("Users")
-//                .whereEqualTo("username", username)
-//                .get()
-//                .await()
-//
-//            if (userQuery.isEmpty) {
-//                return AuthResult.Error("Username does not exist")
-//            }
-//
-//            val userDocument = userQuery.documents.first()
-//            val email = userDocument.getString("email")
-//
-//            if (email == null) {
-//                Log.e("SIGN_IN", "Login error")
-//                return AuthResult.Error("Login error")
-//            }
-//
-//            Log.d("SIGN_IN", "Attempting login with username: $username")
-//
-//            val result = auth.signInWithEmailAndPassword(email, password).await()
-//
-//            val user = result.user
-//            user?.let {
-//                db.collection("Users")
-//                    .document(it.uid)
-//                    .update("lastLogin", Date())
-//                    .await()
-//
-//                Log.d("SIGN_IN", "Login successful: $username")
-//                AuthResult.Success(it, username)
-//            } ?: run {
-//                Log.e("SIGN_IN", "Login failed: $username")
-//                AuthResult.Error("Login has failed. Please try again.")
-//            }
-//        } catch (e: Exception) {
-//            Log.e("SIGN_IN", "Login failed: ${e.message}")
-//            AuthResult.Error("An error occurred. Please try again.")
-//        }
 
     override fun logout() {
         Firebase.auth.signOut()
